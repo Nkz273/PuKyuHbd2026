@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday!</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;600&display=swap');
+
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            text-align: center; 
+            background: #1a1a2e;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            color: #ffffff;
+            margin: 0; padding: 20px;
+        }
+
+        .card { 
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            padding: 30px; border-radius: 30px; 
+            max-width: 450px; margin: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Cake & Flame */
+        .cake-container { position: relative; font-size: 100px; margin: 30px 0; display: inline-block; }
+        .flame { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); font-size: 40px; animation: flicker 0.2s infinite alternate; }
+        @keyframes flicker { 0% { opacity: 0.8; } 100% { opacity: 1; transform: translateX(-50%) scale(1.1); } }
+        .smoke { display: none; font-size: 40px; position: absolute; top: -45px; left: 50%; transform: translateX(-50%); }
+
+        /* The Reveal Section */
+        #reveal-section { display: none; animation: fadeInScale 1s ease-out forwards; }
+        @keyframes fadeInScale {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Your Personal GIF */
+        .couple-gif {
+            width: 100%;
+            max-width: 320px;
+            border-radius: 20px;
+            border: 4px solid #ff758c;
+            box-shadow: 0 0 20px rgba(255, 117, 140, 0.4);
+            margin: 20px 0;
+        }
+
+        .personal-note {
+            font-family: 'Dancing Script', cursive;
+            font-size: 2.2rem; color: #ff758c; margin-top: 10px;
+        }
+
+        .guestbook { margin-top: 100px; padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .wish-entry { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; margin: 10px 0; text-align: left; }
+        
+        button { background: #ff4d4d; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-weight: bold; margin: 10px; }
+        input { width: 80%; padding: 12px; border-radius: 10px; border: none; margin-bottom: 10px; background: rgba(255,255,255,0.9); }
+        #counter-msg { font-size: 0.8rem; color: #ffb3ba; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="cake-area" class="cake-container">
+        <div id="flame" class="flame">🔥</div>
+        <div id="smoke" class="smoke">💨</div>
+        <div class="cake">🎂</div>
+    </div>
+
+    <div id="status">Tap below, then BLOW on the cake!</div>
+    <button id="micBtn" onclick="startMic()">Make A Wish💓</button>
+
+    <div id="reveal-section">
+        <img src="https://i.postimg.cc/d1J49SrJ/B3ADF171-60F8-4338-AEFF-48209290B665.gif" class="couple-gif" alt="Our Memory">
+        
+        <div class="personal-note">Happy Birthday, Pu Kyu Tone! ❤️</div>
+        <p>You’re the best thing that ever happened to me. Enjoy your special day! Wish you all the happiness in the world!</p>
+        <p style="font-size: 0.7rem; color: #aaa;">Scroll down for friends' messages ↓</p>
+    </div>
+</div>
+
+<div class="guestbook">
+    <h3>Friends' Wall 💌</h3>
+    <input type="text" id="fName" placeholder="Your Name">
+    <input type="text" id="fWish" placeholder="Happy Birthday Message">
+    <button onclick="addWish()" style="background: #4d79ff;">Post Wish</button>
+    <p id="counter-msg">0/10 wishes to trigger fireworks!</p>
+    <div id="wall"></div>
+</div>
+
+<script>
+    let blownOut = false;
+    let wishCount = 0;
+
+    async function startMic() {
+        document.getElementById('micBtn').style.display = 'none';
+        document.getElementById('status').innerText = "BLOW INTO THE MIC! 🌬️";
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const microphone = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(2048, 1, 1);
+            analyser.fftSize = 512;
+            microphone.connect(analyser);
+            analyser.connect(processor);
+            processor.connect(audioContext.destination);
+
+            processor.onaudioprocess = function() {
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
+                let volume = array.reduce((a, b) => a + b) / array.length;
+                if (volume > 45 && !blownOut) {
+                    reveal();
+                    blownOut = true;
+                    stream.getTracks().forEach(t => t.stop());
+                }
+            };
+        } catch (err) {
+            document.getElementById('cake-area').onclick = reveal;
+        }
+    }
+
+    function reveal() {
+        document.getElementById('flame').style.display = 'none';
+        document.getElementById('smoke').style.display = 'block';
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('reveal-section').style.display = 'block';
+        confetti({ particleCount: 200, spread: 80, origin: { y: 0.7 } });
+    }
+
+    function addWish() {
+        const n = document.getElementById('fName').value || "Friend";
+        const w = document.getElementById('fWish').value;
+        if(!w) return;
+
+        wishCount++;
+        document.getElementById('counter-msg').innerText = `${wishCount}/10 wishes to trigger fireworks!`;
+
+        const e = document.createElement('div');
+        e.className = 'wish-entry';
+        e.innerHTML = `<strong>${n}:</strong> ${w}`;
+        document.getElementById('wall').prepend(e);
+        
+        document.getElementById('fName').value = ""; 
+        document.getElementById('fWish').value = "";
+
+        // FIREWORKS TRIGGER AT 10 ENTRIES
+        if (wishCount === 10) {
+            var end = Date.now() + (5 * 1000);
+            var colors = ['#ff758c', '#ffffff', '#ff4d4d'];
+            (function frame() {
+                confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
+                confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
+                if (Date.now() < end) { requestAnimationFrame(frame); }
+            }());
+        } else {
+            confetti({ particleCount: 20, scalar: 0.7 });
+        }
+    }
+</script>
+
+</body>
+</html>
